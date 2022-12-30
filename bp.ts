@@ -8,7 +8,7 @@ class BufferPool {
     readonly uri   : string = "mongodb://192.168.2.102:8000";
     readonly db    : string = "animal";
     readonly table : string = "sheeps";
-    readonly cycleTime : number = 1000;
+    readonly cycleTime : number = 5000;
     private constructor() {
         this.load();
      }
@@ -35,11 +35,12 @@ class BufferPool {
     }
 
     async fsync() {
-        if(this.processing){
-            console.info(`有一个session正在fsync...`);
-            return;
-        }
-        this.processing = true;
+        // if(this.processing){
+        //     console.info(`有一个session正在fsync...`);
+        //     return;
+        // }
+        // this.processing = true;
+        console.info(`>>>>start fsync...`);
         const client = new MongoClient(this.uri);
         try {
             const database = client.db(this.db);
@@ -80,14 +81,26 @@ class BufferPool {
         }
         finally {
             await client.close();
-            this.processing = false;
+            // this.processing = false;
+            console.info(`<<<<end fsync... \n`);
         }
     }
 
-    run() {
-        setInterval(()=>{
-            this.fsync();
-        }, this.cycleTime);
+    after(ts : number){
+        return new Promise((resolve, reject)=>{
+            setTimeout(() => {
+                resolve(null);
+            }, ts);
+        })
+    }
+
+    // 这么写,确保同时只能有一个fsync任务在执行
+    async run() {
+        while(true){
+            console.log(`${(new Date()).toLocaleString()}`);
+            await this.after(this.cycleTime);
+            await this.fsync();
+        }
     }
 
     findOne(uid: number) {
